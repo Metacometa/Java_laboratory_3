@@ -4,6 +4,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Scanner;
 
@@ -15,10 +16,6 @@ public class AgeHandler {
      * Date format for parsing date from strings
      */
     final static String DATE_FORMAT = "dd.MM.yyyy";
-    /**
-     * This variable is needed for checking of correct input
-     */
-    final static int DATE_LENGTH = 10;
     String name;
     String surname;
     String patronymic;
@@ -29,12 +26,12 @@ public class AgeHandler {
     public AgeHandler() {
         while (true) {
             try {
-                System.out.println("Введите: Имя Фамилия Отчество Дата рождения");
+                System.out.println("Введите: Фамилия Имя Отчество Дата рождения");
                 getUserInformation();
                 break;
             }
             catch (ParseException e) {
-                System.out.println("Non-existent date. Try again according to: " + DATE_FORMAT + " format.");
+                System.out.println("Date does not exist. Try again according to: " + DATE_FORMAT + " format.");
             }
             catch (TimeTravelException e) {
                 System.out.println("The person from the future has not yet born. Try again by following rules of time.");
@@ -42,16 +39,12 @@ public class AgeHandler {
             catch (NonRussianCharException e) {
                 System.out.println("Only russian symbols are allowed. Try again.");
             }
-            catch (WrongDateException e) {
-                System.out.println("Wrong date format. Try again.");
-            }
             catch (UndefinedGenderException e) {
                 System.out.println("Sorry. Unsuccessful defining of the gender. Please, try another data");
             }
         }
 
         printHandledUserInformation();
-
     }
 
     /**
@@ -59,45 +52,33 @@ public class AgeHandler {
      * @return parsed date
      * @throws TimeTravelException
      * @throws ParseException
-     * @throws WrongDateException
      */
-    private static LocalDate parseDate(Scanner in) throws TimeTravelException, ParseException, WrongDateException {
-        DateFormat df = new SimpleDateFormat(DATE_FORMAT);
-        while(true) {
-            String date_s = in.next();
-            checkDateCorrectness(date_s);
+    private static LocalDate parseDate(Scanner in) throws TimeTravelException, ParseException {
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
+        String date_s = in.next();
 
-            df.setLenient(false);
-            Calendar date_c = Calendar.getInstance();
-            date_c.setTime(df.parse(date_s));
+        checkDateCorrectness(date_s);
 
-            LocalDate date = LocalDate.of(date_c.get(Calendar.YEAR), date_c.get(Calendar.MONTH) + 1, date_c.get(Calendar.DAY_OF_MONTH));
-            LocalDate currentDate = LocalDate.now( ZoneId.of("Europe/Moscow"));
+        LocalDate date = LocalDate.parse(date_s, dateFormatter);
+        LocalDate currentDate = LocalDate.now( ZoneId.of("Europe/Moscow"));
 
-            if (currentDate.isBefore(date)) {
-                throw new TimeTravelException();
-            }
-            return date;
+        if (currentDate.isBefore(date)) {
+            throw new TimeTravelException();
         }
+        return date;
     }
 
     /**
-     * @param date to check its correctness
-     * @throws WrongDateException
+     * This method is needed to throw exceptions if date has wrong format and also takes into consider leap years
+     * @param date input date
+     * @throws ParseException
      */
-    private static void checkDateCorrectness(String date) throws WrongDateException {
-        if (date.length() != DATE_LENGTH) {
-            throw new WrongDateException();
-        }
+    private static void checkDateCorrectness(String date) throws ParseException {
+        DateFormat calendarFormatter = new SimpleDateFormat(DATE_FORMAT);
 
-        for (int i = 0; i < date.length(); i++) {
-            char c = date.charAt(i);
-
-            boolean isCorrectDateSymbol = (c >= '0' && c <= '9');
-            if (!isCorrectDateSymbol && (i != 2 && i != 5)) {
-                throw new WrongDateException();
-            }
-        }
+        calendarFormatter.setLenient(false);
+        Calendar date_c = Calendar.getInstance();
+        date_c.setTime(calendarFormatter.parse(date));
     }
 
     /**
@@ -119,12 +100,10 @@ public class AgeHandler {
      * @throws TimeTravelException
      * @throws ParseException
      * @throws NonRussianCharException
-     * @throws WrongDateException
      * @throws UndefinedGenderException
      */
     private void getUserInformation() throws TimeTravelException,
-            ParseException, NonRussianCharException,
-            WrongDateException, UndefinedGenderException {
+            ParseException, NonRussianCharException, UndefinedGenderException {
         Scanner in = new Scanner(System.in);
 
         surname = in.next();
@@ -147,14 +126,12 @@ public class AgeHandler {
      */
     private static String getGenderFromPatronymic(String patronymic) throws UndefinedGenderException{
         String genderDefiner = "";
-        genderDefiner += patronymic.charAt(patronymic.length() - 3);
-        genderDefiner += patronymic.charAt(patronymic.length() - 2);
         genderDefiner += patronymic.charAt(patronymic.length() - 1);
 
-        if (genderDefiner.equals("вич")) {
+        if (genderDefiner.equals("ч")) {
             return "М";
         }
-        else if (genderDefiner.equals("вна")) {
+        else if (genderDefiner.equals("а")) {
             return "Ж";
         }
         else {
